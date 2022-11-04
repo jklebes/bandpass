@@ -15,21 +15,21 @@ end
 %high_cutoff: more than low cutoff, less than image size
 addRequired(p,'high_cutoff', @isnumeric)
 %stripe supression: Horizontal, Vertical, or None (default)
-addParameter(p,'stripeOption', "None", @(x) any(validatestring(x,["Horizontal", "Vertical", "None"])))
+addParameter(p,'stripeOption', 'None', @(x) any(validatestring(x,{'Horizontal', 'Vertical', 'None'})))
 %stripe supression width: less than image dimension, 0->None
 addParameter(p,'stripeWidth', 0, @isnumeric)
 %filter type, default Butterworth
-addParameter(p,'filter', "butterworth", @(x) any(validatestring(x,["butterworth", "hard"])))
+addParameter(p,'filter', 'butterworth', @(x) any(validatestring(x,{'butterworth', 'hard'})))
 addParameter(p,'butterworthN', 2)
-%FT padding type, default "symmetric"
-padOptions=["symmetric", "mirror","None"];
-addParameter(p,'padOption', "symmetric", @(x) isnumeric(x)||any(validatestring(x,padOptions)));
+%FT padding type, default 'symmetric'
+padOptions=['symmetric', 'mirror','None'];
+addParameter(p,'padOption', 'symmetric', @(x) isnumeric(x)||any(validatestring(x,padOptions)));
 
 %run the parser
 parse(p,image, low_cutoff, high_cutoff,varargin{:})
 %additional argument consequences
 if p.Results.stripeWidth<=0
-    stripeOption="None";
+    stripeOption='None';
 else 
     stripeOption=p.Results.stripeOption;
 end
@@ -39,7 +39,7 @@ image_size=size(image);
 %pad and Fourier transform
 fourier = fft_padded(image, p.Results.padOption);
 fourier_shifted = fftshift(fourier);
-if p.Results.filter=="butterworth"
+if p.Results.filter=='butterworth'
     %construct Fourier space butterworth bandpass filter
     %same (usually square) size as image
     masksize_x = size(fourier_shifted,2); %switch dimensions in case no padding
@@ -48,7 +48,7 @@ if p.Results.filter=="butterworth"
     center_coord_y = floor(masksize_y/2)+1;
     n=p.Results.butterworthN;
     mask=butterworthMask(masksize_x, masksize_y, low_cutoff, high_cutoff,n);
-elseif p.Results.filter=="hard"
+elseif p.Results.filter=='hard'
     %construct hard cutoff Fourier space mask
     mask = zeros(size(fourier_shifted));
     masksize_x = size(mask,2);
@@ -65,15 +65,18 @@ elseif p.Results.filter=="hard"
     end
 end
 %potentially add stripe to Fourier space mask
-if stripeOption=="Horizontal"
-    %Fourier space stripe goes other way than in real space!
-    for col = center_coord_x-width/2:center_coord_x+width/2
-        mask(:,col)=0;
-    end
-elseif stripeOption=="Vertical"
-    for row = center_coord_y-width/2:center_coord_y+width/2
-        mask(row,:)=0;
-    end
+switch stripeOption
+    case 'Horizontal'
+        %Fourier space stripe goes other way than in real space!
+        width=p.Results.stripeWidth;
+        for col = floor(center_coord_x-width/2):ceil(center_coord_x+width/2)
+            mask(:,col)=0;
+        end
+    case 'Vertical'
+        width=p.Results.stripeWidth;
+        for row = floor(center_coord_y-width/2):ceil(center_coord_y+width/2)
+            mask(row,:)=0;
+        end
 end
 %apply mask
 fourier_masked = fourier_shifted .* mask;
@@ -98,8 +101,43 @@ function mask= butterworthMask(masksize_x, masksize_y, low_cutoff, high_cutoff,n
     n2=n*2;
     %trivially scaled arrays dist/low_cutoff, dist/high_cutoff
     %butterworth equations on low, high side
-    high_filter=(1./(1 + (dist/high_cutoff).^(n2)));
-    low_filter=1./(1 + (dist/low_cutoff).^(n2));
+    if ~isempty(high_cutoff)
+        high_filter=(1./(1 + (dist/high_cutoff).^(n2)));
+    else 
+        high_filter= ones(masksize_x, masksize_y);
+    end
+    if low_cutoff >0
+        low_filter=1./(1 + (dist/low_cutoff).^(n2));
+    else
+        low_filter = zeros(masksize_x, masksize_y);
+    end
     %combine
     mask = high_filter.*(1-low_filter);
+end
+
+function image_out = fft_padded(image, varargin)
+%image_out adds padding and carries out fft
+% the possibly rectangular image is extended to a square of size N*N,
+% where N=2^i is >= 1.5 the larger dimension (except in case "none")
+% "symetric" is mirror padding, can be used to replicate imageJ FFt bandpass filter
+% https://imagej.nih.gov/ij/plugins/fft-filter.html
+if nargin >1
+    padding_opt = varargin{1};
+    if ~isnumeric(padding_opt) && padding_opt=="mirror"
+        padding_opt = "symmetric";
+    end
+    if ~isnumeric(padding_opt) && padding_opt=="zeros"
+        padding_opt=0;
+    end
+    if isnumeric(padding_opt) | ismember(padding_opt,["circular","replicate","symmetric"])
+        dims = size(image);
+        maxdim = max(dims);
+        i = ceil(log2(maxdim*1.5)); %TODO check
+        N=i^2;
+        image=padarray(image,[N/2, N/2], padding_opt);
+    end
+end
+%else if argument is nonexistent, empty, or invalid option:
+%image stays unpadded
+image_out = fft2(image);
 end
