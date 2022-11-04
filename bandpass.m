@@ -42,8 +42,8 @@ fourier_shifted = fftshift(fourier);
 if p.Results.filter=='butterworth'
     %construct Fourier space butterworth bandpass filter
     %same (usually square) size as image
-    masksize_x = size(fourier_shifted,2); %switch dimensions in case no padding
-    masksize_y = size(fourier_shifted,1);
+    masksize_x = size(fourier_shifted,1); 
+    masksize_y = size(fourier_shifted,2);
     center_coord_x = floor(masksize_x/2)+1;
     center_coord_y = floor(masksize_y/2)+1;
     n=p.Results.butterworthN;
@@ -51,8 +51,8 @@ if p.Results.filter=='butterworth'
 elseif p.Results.filter=='hard'
     %construct hard cutoff Fourier space mask
     mask = zeros(size(fourier_shifted));
-    masksize_x = size(mask,2);
-    masksize_y = size(mask,1);
+    masksize_x = size(mask,1);
+    masksize_y = size(mask,2);
     center_coord_x = floor(masksize_x/2)+1;
     center_coord_y = floor(masksize_y/2)+1;
     for col = 1: masksize_y
@@ -84,8 +84,8 @@ fourier_masked = fourier_shifted .* mask;
 fourier_masked_shift = fftshift(fourier_masked);
 %transform back and cut away padding
 padded_image_out = real(ifft2(fourier_masked_shift));
-left_border = (masksize_x-image_size(1))/2;
-top_border = (masksize_y-image_size(2))/2;
+left_border = ceil((masksize_x-image_size(1))/2);
+top_border = ceil((masksize_y-image_size(2))/2);
 image_out= padded_image_out(left_border+1:left_border+image_size(1), ...
     top_border+1:top_border+image_size(2));
 end
@@ -133,8 +133,16 @@ if nargin >1
         dims = size(image);
         maxdim = max(dims);
         i = ceil(log2(maxdim*1.5)); %TODO check
-        N=i^2;
-        image=padarray(image,[N/2, N/2], padding_opt);
+        N=2^i;
+        x_pad=N-dims(1);
+        y_pad=N-dims(2);
+        image=padarray(image,[ceil(x_pad/2), ceil(y_pad/2)], padding_opt);
+        if mod(x_pad,2)==1
+            image=image(1:end-1,:);
+        end
+        if mod(y_pad,2)==1
+            image=image(:,1:end-1);
+        end
     end
 end
 %else if argument is nonexistent, empty, or invalid option:
