@@ -14,12 +14,12 @@ to use: call function ``bandpass(image, low_cutoff, high_cutoff)``, returns smoo
 
 #### Optional keyword parameters
 
-``stripeOption = "Horizonal" `` or ``"Vertical"`` - supress stripes, default ``"None"``
+``stripeOption = 'Horizonal' `` or ``'Vertical'`` - supress stripes, default ``'None'``
 
 ``stripeWidth`` - stripe width to suppress
 
-``filter="butterworth"`` or ``"hard"``, filter profile, default ``"butterworth"``
+``filter='butterworth'`` or ``'hard'``, filter profile, default ``'butterworth'``
 
 ``butterworthN`` exponent in butterworth filter, default ``2``
 
-``padOption = "symmetric" ``, ``circular``, ``0`` or other value, or ``None`` - how to pad image border for Fourier transform, default ``symmetric``
+``padOption = 'symmetric' ``, ``'circular'``, ``0`` or other value, or ``'None'`` - how to pad image border for Fourier transform, default ``'symmetric'``
