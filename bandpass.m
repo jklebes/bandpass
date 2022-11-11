@@ -1,33 +1,38 @@
 function image_out = bandpass(image, low_cutoff, high_cutoff, varargin)
-% 2D image bandpass filter with options, 
+% 2D image bandpass filter with options and stripe supression, 
 % defaults replicating imageJ's FFT bandpass: butterworth, mirror padding
 % author jklebes 2022
 
 %%%%% parse inputs
 p = inputParser;
 %image
-addRequired(p,'image',@isnumeric); %would like to validate array is 2D
+addRequired(p,'image',@(x) isnumeric(x)&&ismatrix(x) );
+%parse image first to validate further inputs againsts its dimensions
+parse(p,image);
+dims=size(image);
+maxdim = max(dims);
 %low_cutoff: less than image size, 0->None
-addRequired(p,'low_cutoff', @isnumeric)
-if low_cutoff==0
-    low_cutoff=[];
-end
+addRequired(p,'low_cutoff', @(x) isnumeric(x)&&0<=x&&x<=maxdim);
 %high_cutoff: more than low cutoff, less than image size
-addRequired(p,'high_cutoff', @isnumeric)
+addRequired(p,'high_cutoff', @(x) isnumeric(x) &&low_cutoff<x&&x<=maxdim);
 %stripe supression: Horizontal, Vertical, or None (default)
-addParameter(p,'stripeOption', 'None', @(x) any(validatestring(x,{'Horizontal', 'Vertical', 'None'})))
+addParameter(p,'stripeOption', 'None', @(x) any(validatestring(x,{'Horizontal', 'Vertical', 'None'})));
 %stripe supression width: less than image dimension, 0->None
-addParameter(p,'stripeWidth', 0, @isnumeric)
+addParameter(p,'stripeWidth', 0, @(x) isnumeric(x))
 %filter type, default Butterworth
 addParameter(p,'filter', 'butterworth', @(x) any(validatestring(x,{'butterworth', 'hard'})))
 addParameter(p,'butterworthN', 2)
 %FT padding type, default 'symmetric'
-padOptions=['symmetric', 'mirror','None'];
+%accept options of matlab's padarray and likely synonyms (case insensitive)
+padOptions={'symmetric', 'mirror','None', 'circular','replicate','zeros', 'periodic'}; 
 addParameter(p,'padOption', 'symmetric', @(x) isnumeric(x)||any(validatestring(x,padOptions)));
 
 %run the parser
 parse(p,image, low_cutoff, high_cutoff,varargin{:})
 %additional argument consequences
+if low_cutoff==0
+    low_cutoff=[];
+end
 if p.Results.stripeWidth<=0
     stripeOption='None';
 else 
@@ -125,6 +130,9 @@ if nargin >1
     padding_opt = varargin{1};
     if ~isnumeric(padding_opt) && padding_opt=="mirror"
         padding_opt = "symmetric";
+    end
+    if ~isnumeric(padding_opt) && padding_opt=="periodic"
+        padding_opt = "replicate";
     end
     if ~isnumeric(padding_opt) && padding_opt=="zeros"
         padding_opt=0;
