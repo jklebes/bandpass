@@ -1,6 +1,6 @@
 function image_out = bandpass(image, low_cutoff, high_cutoff, varargin)
 % 2D image bandpass filter with options and stripe supression, 
-% defaults replicating imageJ's FFT bandpass: butterworth, mirror padding
+% defaults replicating imageJ's FFT bandpass: gaussian filter, mirror padding
 % author jklebes 2022
 
 %%%%% parse inputs
@@ -19,9 +19,11 @@ addRequired(p,'high_cutoff', @(x) isnumeric(x) &&low_cutoff<x&&x<=maxdim);
 addParameter(p,'stripeOption', 'None', @(x) any(validatestring(x,{'Horizontal', 'Vertical', 'None'})));
 %stripe supression width: less than image dimension, 0->None
 addParameter(p,'stripeWidth', 0, @(x) isnumeric(x))
+%stripefilter, current hard, goal Gaussian
+addParameter(p,'Stripefilter', 'hard', @(x) any(validatestring(x,{'gaussian','butterworth', 'hard'})))
 %filter type, default Butterworth
-addParameter(p,'filter', 'butterworth', @(x) any(validatestring(x,{'butterworth', 'hard'})))
-addParameter(p,'butterworthN', 2)
+addParameter(p,'filter', 'gaussian', @(x) any(validatestring(x,{'gaussian','butterworth', 'hard'})))
+addParameter(p,'butterworthN', 1)
 %FT padding type, default 'symmetric'
 %accept options of matlab's padarray and likely synonyms (case insensitive)
 padOptions={'symmetric', 'mirror','None', 'circular','replicate','zeros', 'periodic'}; 
@@ -44,22 +46,22 @@ image_size=size(image);
 %pad and Fourier transform
 fourier = fft_padded(image, p.Results.padOption);
 fourier_shifted = fftshift(fourier);
-if p.Results.filter=='butterworth'
+%size of mask to construct
+%same (usually square) size as image
+masksize_x = size(fourier_shifted,1);
+masksize_y = size(fourier_shifted,2);
+center_coord_x = floor(masksize_x/2)+1;
+center_coord_y = floor(masksize_y/2)+1;
+if p.Results.filter=='gaussian'
+    %construct Gaussian filter
+    mask=gaussianMaskOriginal(masksize_x, masksize_y, low_cutoff, high_cutoff);
+elseif p.Results.filter=='butterworth'
     %construct Fourier space butterworth bandpass filter
-    %same (usually square) size as image
-    masksize_x = size(fourier_shifted,1); 
-    masksize_y = size(fourier_shifted,2);
-    center_coord_x = floor(masksize_x/2)+1;
-    center_coord_y = floor(masksize_y/2)+1;
     n=p.Results.butterworthN;
     mask=butterworthMask(masksize_x, masksize_y, low_cutoff, high_cutoff,n);
 elseif p.Results.filter=='hard'
     %construct hard cutoff Fourier space mask
-    mask = zeros(size(fourier_shifted));
-    masksize_x = size(mask,1);
-    masksize_y = size(mask,2);
-    center_coord_x = floor(masksize_x/2)+1;
-    center_coord_y = floor(masksize_y/2)+1;
+    mask = zeros([masksize_x, masksize_y]);
     for col = 1: masksize_y
         for row = 1:masksize_y
             distance = sqrt((col-center_coord_y)^2+(row-center_coord_x)^2);
@@ -95,6 +97,91 @@ image_out= padded_image_out(left_border+1:left_border+image_size(1), ...
     top_border+1:top_border+image_size(2));
 end
 
+function mask = gaussianMaskOriginal(masksize_x, masksize_y, low_cutoff, high_cutoff)
+%%direct transcirption of imageJ version filter construction (leaving out stripes)
+% https://imagej.nih.gov/ij/plugins/download/FFT_Filter.java by Joachim Walter
+%used for testing equivalence-
+%the loops can be made more efficient by array operations
+mask = zeros([masksize_x,masksize_y]);
+
+%calculate factor in exponent of Gaussian from filterLarge / filterSmall
+imsize=512; %TODO input original imsize/ input masksize as fraction of
+scaleLarge = (high_cutoff/imsize)^2;
+scaleSmall = (low_cutoff/imsize)^2;
+
+%loop over rows
+for j=1:masksize_x/2-1 %position away from center - start counting at 1
+    row = j * masksize_x; %index for caulculating memory location also
+    backrow = (masksize_x-j)*masksize_x; %keep as if 0-indexed
+    rowFactLarge = exp(-(j*j) * scaleLarge);
+    rowFactSmall = exp(-(j*j) * scaleSmall);
+
+
+    % loop over columns
+    for col=1:masksize_x/2-1
+        backcol = masksize_x-(col+1); %but matlab array index is 2
+        colFactLarge = exp(- (col*col) * scaleLarge);
+        colFactSmall = exp(- (col*col) * scaleSmall);
+        factor = (1 - rowFactLarge*colFactLarge) * rowFactSmall*colFactSmall;
+
+        mask(col+1+row) = factor; %even though array is 2D, in matlab assigning
+                                %to 1D index works - but counts columnwise
+        mask(col+1+backrow) = factor;
+        mask(backcol+row) = factor;
+        mask(backcol+backrow) = factor;
+    end
+end
+
+%process meeting points (masksize_x/2,0) , (0,masksize_x/2), and (masksize_x/2,masksize_x/2)
+rowmid = masksize_x * (masksize_x/2);
+rowFactLarge = exp(- (masksize_x/2)*(masksize_x/2) * scaleLarge);
+rowFactSmall = exp(- (masksize_x/2)*(masksize_x/2) * scaleSmall);
+
+mask(masksize_x/2) = (1 - rowFactLarge) * rowFactSmall; % (masksize_x/2,0)
+mask(rowmid) = (1 - rowFactLarge) * rowFactSmall; % (0,masksize_x/2)
+mask(masksize_x/2 + rowmid) = (1 - rowFactLarge*rowFactLarge) * rowFactSmall*rowFactSmall; % (masksize_x/2,masksize_x/2)
+
+%loop along row 0 and masksize_x/2
+rowFactLarge = exp(- (masksize_x/2)*(masksize_x/2) * scaleLarge);
+rowFactSmall = exp(- (masksize_x/2)*(masksize_x/2) * scaleSmall);
+for col=1:masksize_x/2-1
+    backcol = masksize_x-col;
+    colFactLarge = exp(- (col*col) * scaleLarge);
+    colFactSmall = exp(- (col*col) * scaleSmall);
+    mask(col)= (1 - colFactLarge) * colFactSmall;
+    mask(backcol)= (1 - colFactLarge) * colFactSmall;
+    mask(col+rowmid)= (1 - colFactLarge*rowFactLarge) * colFactSmall*rowFactSmall;
+    mask(backcol+rowmid) = (1 - colFactLarge*rowFactLarge) * colFactSmall*rowFactSmall;
+end
+
+% loop along column 0 and masksize_x/2
+colFactLarge = exp(- (masksize_x/2)*(masksize_x/2) * scaleLarge);
+colFactSmall = exp(- (masksize_x/2)*(masksize_x/2) * scaleSmall);
+for j=1:masksize_x/2-1
+    row = j * masksize_x;
+    backrow = (masksize_x-j)*masksize_x;
+    rowFactLarge = exp(- (j*j) * scaleLarge);
+    rowFactSmall = exp(- (j*j) * scaleSmall);
+    mask(row) = (1 - rowFactLarge) * rowFactSmall;
+    mask(backrow) = (1 - rowFactLarge) * rowFactSmall;
+    mask(row+masksize_x/2)= (1 - rowFactLarge*colFactLarge) * rowFactSmall*colFactSmall;
+    mask(backrow+masksize_x/2) = (1 - rowFactLarge*colFactLarge) * rowFactSmall*colFactSmall;
+end
+mask = swapQuadrants(mask);
+imshow(mask,[]);
+end
+
+function array_out=swapQuadrants(array)
+dims = size(array);
+xsize=dims(1);
+ysize=dims(2);
+upperleft=array(1:xsize/2, 1:ysize/2);
+upperright=array(1:xsize/2, ysize/2+1:end);
+lowerleft=array(xsize/2+1:end,1:ysize/2);
+lowerright=array(xsize/2+1:end, ysize/2+1:end);
+array_out=[lowerright, lowerleft; upperright, upperleft];
+end
+
 function mask= butterworthMask(masksize_x, masksize_y, low_cutoff, high_cutoff,n)
     %array of coordinate values from center
     xs= -(masksize_x/2):masksize_x/2-1;
@@ -103,15 +190,14 @@ function mask= butterworthMask(masksize_x, masksize_y, low_cutoff, high_cutoff,n
     ys = repmat(ys', [1 masksize_x]);
     %array of distances
     dist=sqrt(xs.^2+ys.^2);
-    n2=n*2;
-    %trivially scaled arrays dist/low_cutoff, dist/high_cutoff
-    %butterworth equations on low, high side
+    n2=n*2; %exponent
+    %butterworth equations on low, high lengthscale side
     if ~isempty(high_cutoff)
         high_filter=(1./(1 + (dist/high_cutoff).^(n2)));
     else 
         high_filter= ones(masksize_x, masksize_y);
     end
-    if low_cutoff >0
+    if ~isempty(low_cutoff)
         low_filter=1./(1 + (dist/low_cutoff).^(n2));
     else
         low_filter = zeros(masksize_x, masksize_y);
