@@ -2,7 +2,7 @@
 MATLAB bandpass filter for 2D images
 [![View bandpass on File Exchange](https://www.mathworks.com/matlabcentral/images/matlab-file-exchange.svg)](https://uk.mathworks.com/matlabcentral/fileexchange/120028-bandpass)
 
-to use: call function ``bandpass(image, low_cutoff, high_cutoff)``, returns smoothed image
+to use: call function ``imbandpass(image, low_cutoff, high_cutoff)``, returns smoothed image
 
 ### Arguments
 #### Positional
