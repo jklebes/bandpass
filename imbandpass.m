@@ -1,4 +1,4 @@
-function image_out = bandpass(image, low_cutoff, high_cutoff, varargin)
+function image_out = imbandpass(image, low_cutoff, high_cutoff, varargin)
 % 2D image bandpass filter with options and stripe supression, 
 % defaults replicating imageJ's FFT bandpass: gaussian filter, mirror padding
 % author jklebes 2022
@@ -12,9 +12,9 @@ parse(p,image);
 dims=size(image);
 maxdim = max(dims);
 %low_cutoff: less than image size, 0->None
-addRequired(p,'low_cutoff', @(x) isnumeric(x)&&0<=x&&x<=maxdim);
+addRequired(p,'low_cutoff', @(x) isempty(x)||(isnumeric(x)&&0<=x&&x<=maxdim));
 %high_cutoff: more than low cutoff, less than image size
-addRequired(p,'high_cutoff', @(x) isnumeric(x) &&low_cutoff<x&&x<=maxdim);
+addRequired(p,'high_cutoff', @(x) isempty(x)||(isnumeric(x) &&low_cutoff<x&&x<=maxdim));
 %stripe supression: Horizontal, Vertical, or None (default)
 addParameter(p,'stripeOption', 'None', @(x) any(validatestring(x,{'Horizontal', 'Vertical', 'None'})));
 %stripe supression width: less than image dimension, 0->None
@@ -32,8 +32,15 @@ addParameter(p,'padOption', 'symmetric', @(x) isnumeric(x)||any(validatestring(x
 %run the parser
 parse(p,image, low_cutoff, high_cutoff,varargin{:})
 %additional argument consequences
-if low_cutoff==0
-    low_cutoff=[];
+if isempty(low_cutoff)
+    low_cutoff=0;
+    %in the Gaussian filter, this automatically
+    %adds no filter, as e^0=1.  In the other options the value is
+    %symbolic
+end
+if isempty(high_cutoff)
+    high_cutoff=Inf;
+    %and e^(-infty)=0 hopefuly
 end
 if p.Results.stripeWidth<=0
     stripeOption='None';
@@ -52,20 +59,24 @@ masksize_x = size(fourier_shifted,1);
 masksize_y = size(fourier_shifted,2);
 center_coord_x = floor(masksize_x/2)+1;
 center_coord_y = floor(masksize_y/2)+1;
-if p.Results.filter=='gaussian'
+switch p.Results.filter
+    case 'gaussian'
     %construct Gaussian filter
-    mask=gaussianMaskOriginal(masksize_x, masksize_y, low_cutoff, high_cutoff);
-elseif p.Results.filter=='butterworth'
+    %calculate factor in exponent of Gaussian from filterLarge / filterSmall
+    high_cutoff_ratio = high_cutoff/maxdim;
+    low_cutoff_ratio = low_cutoff/maxdim;
+    mask=gaussianMask(masksize_x, masksize_y, low_cutoff_ratio, high_cutoff_ratio);
+    case 'butterworth'
     %construct Fourier space butterworth bandpass filter
     n=p.Results.butterworthN;
     mask=butterworthMask(masksize_x, masksize_y, low_cutoff, high_cutoff,n);
-elseif p.Results.filter=='hard'
+    case 'hard'
     %construct hard cutoff Fourier space mask
     mask = zeros([masksize_x, masksize_y]);
     for col = 1: masksize_y
         for row = 1:masksize_y
             distance = sqrt((col-center_coord_y)^2+(row-center_coord_x)^2);
-            if distance <= high_cutoff && distance > low_cutoff
+            if distance > low_cutoff && (distance <= high_cutoff ||high_cutoff==0)
                 mask(row, col)=1;
             end
         end
@@ -97,19 +108,33 @@ image_out= padded_image_out(left_border+1:left_border+image_size(1), ...
     top_border+1:top_border+image_size(2));
 end
 
-function mask = gaussianMaskOriginal(masksize_x, masksize_y, low_cutoff, high_cutoff)
+function mask = gaussianMask(masksize_x, masksize_y, low_cutoff_ratio, high_cutoff_ratio)
+    %array of coordinate values from center
+    %imageJ version centers on (N/2+1, N/2+1),
+    %but we want to match the centering of fftshift
+    %on (N/2, N/2)
+    %arrays of x, y coordinates
+    xs= -(masksize_x/2):masksize_x/2-1;
+    xs = repmat(xs, [masksize_y 1]);
+    ys= -(masksize_y/2):masksize_y/2-1;
+    ys = repmat(ys', [1 masksize_x]);
+    %array of distances
+    dist=sqrt(xs.^2+ys.^2);
+    %exponentials
+    mask_low = exp(-low_cutoff_ratio^2*dist^2);
+    mask_high = exp(-high_cutoff_ratio^2*dist^2);
+    mask = mask_low.*(1-mask_high);
+end
+
+function mask = gaussianMaskOriginal(masksize_x, masksize_y, low_cutoff_ratio, high_cutoff_ratio)
 %%direct transcirption of imageJ version filter construction (leaving out stripes)
 % https://imagej.nih.gov/ij/plugins/download/FFT_Filter.java by Joachim Walter
 %used for testing equivalence-
 %the loops can be made more efficient by array operations
 mask = zeros([masksize_x,masksize_y]);
 
-%calculate factor in exponent of Gaussian from filterLarge / filterSmall
-imsize=512; %TODO input original imsize/ input masksize as fraction of
-scaleLarge = (high_cutoff/imsize)^2;
-scaleSmall = (low_cutoff/imsize)^2;
-
 %loop over rows
+counter=1;
 for j=1:masksize_x/2-1 %position away from center - start counting at 1
     row = j * masksize_x; %index for caulculating memory location also
     backrow = (masksize_x-j)*masksize_x; %keep as if 0-indexed
@@ -119,16 +144,17 @@ for j=1:masksize_x/2-1 %position away from center - start counting at 1
 
     % loop over columns
     for col=1:masksize_x/2-1
-        backcol = masksize_x-(col+1); %but matlab array index is 2
+        backcol = masksize_x+1-col; %but matlab array index is 2
         colFactLarge = exp(- (col*col) * scaleLarge);
         colFactSmall = exp(- (col*col) * scaleSmall);
         factor = (1 - rowFactLarge*colFactLarge) * rowFactSmall*colFactSmall;
-
+        %factor = counter;
         mask(col+1+row) = factor; %even though array is 2D, in matlab assigning
                                 %to 1D index works - but counts columnwise
         mask(col+1+backrow) = factor;
         mask(backcol+row) = factor;
         mask(backcol+backrow) = factor;
+        counter=counter+1;
     end
 end
 
@@ -137,21 +163,21 @@ rowmid = masksize_x * (masksize_x/2);
 rowFactLarge = exp(- (masksize_x/2)*(masksize_x/2) * scaleLarge);
 rowFactSmall = exp(- (masksize_x/2)*(masksize_x/2) * scaleSmall);
 
-mask(masksize_x/2) = (1 - rowFactLarge) * rowFactSmall; % (masksize_x/2,0)
-mask(rowmid) = (1 - rowFactLarge) * rowFactSmall; % (0,masksize_x/2)
-mask(masksize_x/2 + rowmid) = (1 - rowFactLarge*rowFactLarge) * rowFactSmall*rowFactSmall; % (masksize_x/2,masksize_x/2)
+mask(masksize_x/2+1) = (1 - rowFactLarge) * rowFactSmall; % (masksize_x/2,0)
+mask(rowmid+1) = (1 - rowFactLarge) * rowFactSmall; % (0,masksize_x/2)
+mask(masksize_x/2 + rowmid+1) = (1 - rowFactLarge*rowFactLarge) * rowFactSmall*rowFactSmall; % (masksize_x/2,masksize_x/2)
 
 %loop along row 0 and masksize_x/2
 rowFactLarge = exp(- (masksize_x/2)*(masksize_x/2) * scaleLarge);
 rowFactSmall = exp(- (masksize_x/2)*(masksize_x/2) * scaleSmall);
 for col=1:masksize_x/2-1
-    backcol = masksize_x-col;
+    backcol = masksize_x-(col);
     colFactLarge = exp(- (col*col) * scaleLarge);
     colFactSmall = exp(- (col*col) * scaleSmall);
-    mask(col)= (1 - colFactLarge) * colFactSmall;
-    mask(backcol)= (1 - colFactLarge) * colFactSmall;
-    mask(col+rowmid)= (1 - colFactLarge*rowFactLarge) * colFactSmall*rowFactSmall;
-    mask(backcol+rowmid) = (1 - colFactLarge*rowFactLarge) * colFactSmall*rowFactSmall;
+    mask(col+1)= (1 - colFactLarge) * colFactSmall;
+    mask(backcol+1)= (1 - colFactLarge) * colFactSmall;
+    mask(col+rowmid+1)= (1 - colFactLarge*rowFactLarge) * colFactSmall*rowFactSmall;
+    mask(backcol+rowmid+1) = (1 - colFactLarge*rowFactLarge) * colFactSmall*rowFactSmall;
 end
 
 % loop along column 0 and masksize_x/2
@@ -162,10 +188,10 @@ for j=1:masksize_x/2-1
     backrow = (masksize_x-j)*masksize_x;
     rowFactLarge = exp(- (j*j) * scaleLarge);
     rowFactSmall = exp(- (j*j) * scaleSmall);
-    mask(row) = (1 - rowFactLarge) * rowFactSmall;
-    mask(backrow) = (1 - rowFactLarge) * rowFactSmall;
-    mask(row+masksize_x/2)= (1 - rowFactLarge*colFactLarge) * rowFactSmall*colFactSmall;
-    mask(backrow+masksize_x/2) = (1 - rowFactLarge*colFactLarge) * rowFactSmall*colFactSmall;
+    mask(row+1) = (1 - rowFactLarge) * rowFactSmall;
+    mask(backrow+1) = (1 - rowFactLarge) * rowFactSmall;
+    mask(row+masksize_x/2+1)= (1 - rowFactLarge*colFactLarge) * rowFactSmall*colFactSmall;
+    mask(backrow+masksize_x/2+1) = (1 - rowFactLarge*colFactLarge) * rowFactSmall*colFactSmall;
 end
 mask = swapQuadrants(mask);
 imshow(mask,[]);
@@ -192,12 +218,9 @@ function mask= butterworthMask(masksize_x, masksize_y, low_cutoff, high_cutoff,n
     dist=sqrt(xs.^2+ys.^2);
     n2=n*2; %exponent
     %butterworth equations on low, high lengthscale side
-    if ~isempty(high_cutoff)
-        high_filter=(1./(1 + (dist/high_cutoff).^(n2)));
-    else 
-        high_filter= ones(masksize_x, masksize_y);
-    end
-    if ~isempty(low_cutoff)
+    high_filter=(1./(1 + (dist/high_cutoff).^(n2)));
+    %(no high cutoff: hopefully 1/Inf -> 0)
+    if low_cutoff>0 %in case of no low cutoff, avoid divide by 0
         low_filter=1./(1 + (dist/low_cutoff).^(n2));
     else
         low_filter = zeros(masksize_x, masksize_y);
