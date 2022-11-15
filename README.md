@@ -1,5 +1,5 @@
 # bandpass
-MATLAB bandpass filter for 2D images
+Bandpass filter for images (2D arrays) supressing high-frequency noise, low-frequency variations, and stripes.
 [![View bandpass on File Exchange](https://www.mathworks.com/matlabcentral/images/matlab-file-exchange.svg)](https://uk.mathworks.com/matlabcentral/fileexchange/120028-bandpass)
 
 to use: call function ``imbandpass(image, low_cutoff, high_cutoff)``, returns smoothed image
