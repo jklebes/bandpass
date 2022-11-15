@@ -19,7 +19,7 @@ to use: call function ``imbandpass(image, low_cutoff, high_cutoff)``, returns sm
 
 ``stripeWidth`` - stripe width to suppress
 
-``filter='butterworth'`` or ``'hard'``, filter profile, default ``'butterworth'``
+``filter='butterworth'`` or ``'hard'``, filter profile, default ``'guassian'``
 
 ``butterworthN`` exponent in butterworth filter, default ``1``
 
