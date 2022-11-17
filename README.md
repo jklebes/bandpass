@@ -15,9 +15,11 @@ to use: call function ``imbandpass(image, low_cutoff, high_cutoff)``, returns sm
 
 #### Optional keyword parameters
 
-``stripeOption = 'Horizontal' `` or ``'Vertical'`` - supress stripes, default ``'None'``
+``stripes = 'Horizontal' `` or ``'Vertical'`` - supress stripes, default ``'None'``
 
-``stripeWidth`` - stripe width to suppress
+``stripeFilter = 'Gaussian' `` or ``'hard'`` - stripe filter mode, default ``'gaussian'``
+
+``stripeWidth`` - stripe width to suppress, default ``3``
 
 ``filter='butterworth'`` or ``'hard'``, filter profile, default ``'guassian'``
 
