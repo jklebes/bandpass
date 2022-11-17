@@ -1,5 +1,5 @@
 # bandpass
-MATLAB bandpass filter for 2D images
+Bandpass filter for images (2D arrays) supressing high-frequency noise, low-frequency variations, and stripes.  Gaussian, Butterworth, or hard filter options.
 [![View bandpass on File Exchange](https://www.mathworks.com/matlabcentral/images/matlab-file-exchange.svg)](https://uk.mathworks.com/matlabcentral/fileexchange/120028-bandpass)
 
 to use: call function ``imbandpass(image, low_cutoff, high_cutoff)``, returns smoothed image
@@ -19,9 +19,9 @@ to use: call function ``imbandpass(image, low_cutoff, high_cutoff)``, returns sm
 
 ``stripeFilter = 'Gaussian' `` or ``'hard'`` - stripe filter mode, default ``'gaussian'``
 
-``stripeWidth`` - stripe width to suppress, default ``3``
+``stripeWidth`` - stripe width to suppress, default ``3``.  If ``0``, no stripe supression will take place, even if ``stripeOption = 'Horizontal' `` or ``'Vertical'`` was chosen.
 
-``filter='butterworth'`` or ``'hard'``, filter profile, default ``'guassian'``
+``filter='gaussian', 'butterworth'`` or ``'hard'``, filter profile, default ``'gaussian'``
 
 ``butterworthN`` exponent in butterworth filter, default ``1``
 
