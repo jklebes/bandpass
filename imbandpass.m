@@ -14,18 +14,18 @@ maxdim = max(dims);
 %low_cutoff: less than image size, 0->None
 addRequired(p,'low_cutoff', @(x) isempty(x)||(isnumeric(x)&&0<=x&&x<=maxdim));
 %high_cutoff: more than low cutoff, less than image size
-addRequired(p,'high_cutoff', @(x) isempty(x)||(isnumeric(x) &&low_cutoff<x&&x<=maxdim));
+addRequired(p,'high_cutoff', @(x) isempty(x)||(isnumeric(x) &&(isempty(low_cutoff)||low_cutoff<x)&&x<=maxdim));
 %stripe supression: Horizontal, Vertical, or None (default)
 addParameter(p,'stripes', 'None', @(x) any(validatestring(x,{'Horizontal', 'Vertical', 'None'})));
 %stripe Filter option
 addParameter(p,'stripeFilter', 'gaussian', @(x) any(validatestring(x,{'gaussian', 'hard'})));
 %stripe supression width: less than image dimension, 0->None
 addParameter(p,'stripeWidth', 3, @(x) isnumeric(x))
-%filter type, default Butterworth
+%filter type, default gaussian
 addParameter(p,'filter', 'gaussian', @(x) any(validatestring(x,{'gaussian','butterworth', 'hard'})))
 addParameter(p,'butterworthN', 1)
 %FT padding type, default 'symmetric'
-%accept options of matlab's padarray and likely synonyms (case insensitive)
+% accept options of matlab's padarray and likely synonyms (case insensitive)
 padOptions={'symmetric', 'mirror','None', 'circular','replicate','zeros', 'periodic'};
 addParameter(p,'padOption', 'symmetric', @(x) isnumeric(x)||any(validatestring(x,padOptions)));
 
@@ -39,7 +39,10 @@ if isempty(low_cutoff)
     %symbolic
 end
 if isempty(high_cutoff)
-    high_cutoff=Inf;
+    %would like to set to Inf, but a very small central disk
+    %of the Fourier space mask needs to be removed for 
+    %it to function properly
+    high_cutoff=maxdim*10;
     %and e^(-infty)=0 hopefuly
 end
 if p.Results.stripeWidth<=0
@@ -115,16 +118,16 @@ switch p.Results.stripeFilter
                 stripe_cutoff_ratio = p.Results.stripeWidth/(2*image_size(2));
                 stripeMask=exp(-stripe_cutoff_ratio^2*ys.^2);
                 mask=mask.*stripeMask;
-            %otherwise no stripe filtering action
+                %otherwise no stripe filtering action
         end
-        
+
 end
 %apply mask
 fourier_masked = fourier_shifted .* mask;
-%center
-fourier_masked_shift = fftshift(fourier_masked);
+%center - this can go wrong
+fourier_masked = fftshift(fourier_masked);
 %transform back and cut away padding
-padded_image_out = real(ifft2(fourier_masked_shift));
+padded_image_out = real(ifft2(fourier_masked));
 left_border = ceil((masksize_x-image_size(1))/2);
 top_border = ceil((masksize_y-image_size(2))/2);
 image_out= padded_image_out(left_border+1:left_border+image_size(1), ...
@@ -144,8 +147,8 @@ ys = repmat(ys', [1 masksize_x]);
 %array of distances
 dist=sqrt(xs.^2+ys.^2);
 %exponentials
-mask_low = exp(-low_cutoff_ratio^2*dist^2);
-mask_high = exp(-high_cutoff_ratio^2*dist^2);
+mask_low = exp(-low_cutoff_ratio^2*dist.^2);
+mask_high = exp(-high_cutoff_ratio^2*dist.^2);
 mask = mask_low.*(1-mask_high);
 end
 
