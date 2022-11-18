@@ -42,7 +42,7 @@ if isempty(high_cutoff)
     %would like to set to Inf, but a very small central disk
     %of the Fourier space mask needs to be removed for 
     %it to function properly
-    high_cutoff=maxdim*10;
+    high_cutoff=maxdim*100;
     %and e^(-infty)=0 hopefuly
 end
 if p.Results.stripeWidth<=0
@@ -124,7 +124,8 @@ switch p.Results.stripeFilter
 end
 %apply mask
 fourier_masked = fourier_shifted .* mask;
-%center - this can go wrong
+
+%center
 fourier_masked = fftshift(fourier_masked);
 %transform back and cut away padding
 padded_image_out = real(ifft2(fourier_masked));
@@ -132,6 +133,9 @@ left_border = ceil((masksize_x-image_size(1))/2);
 top_border = ceil((masksize_y-image_size(2))/2);
 image_out= padded_image_out(left_border+1:left_border+image_size(1), ...
     top_border+1:top_border+image_size(2));
+% results may have range shifted into the negatives, shift back into
+% 0 to 255 range
+image_out = image_out-min(image_out, [], 'all');
 end
 
 function mask = gaussianMask(masksize_x, masksize_y, low_cutoff_ratio, high_cutoff_ratio)
