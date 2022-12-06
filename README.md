@@ -7,8 +7,8 @@ To use: call function ``imbandpass(image, low_cutoff, high_cutoff)``, returns sm
 The default options of Gaussian filter, Gaussian stripe filter, and mirrored padding were chosen to replicate imageJ's FFT Bandpass filter.
 
 To access non-default options including stripe supression, use keyword arguments, for example
-``imbandpass(I, 3, 250, filter="Butterworth", stripes="Horizontal", stripeWidth=5)``, 
-equivalently
+``imbandpass(I, 3, 250, filter="Butterworth", stripes="Horizontal", stripeWidth=5)``
+equivlently
 ``imbandpass(I, 3, 250, "filter", "Butterworth", "stripes", "Horizontal", "stripeWidth", 5)``.
 
 ### Arguments
