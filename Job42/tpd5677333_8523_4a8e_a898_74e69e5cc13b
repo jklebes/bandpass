@@ -1,0 +1,13 @@
+#!/bin/sh
+export PARALLEL_SERVER_DECODE_FUNCTION='parallel.cluster.generic.communicatingDecodeFcn'
+export PARALLEL_SERVER_STORAGE_CONSTRUCTOR='makeFileStorageObject'
+export PARALLEL_SERVER_JOB_LOCATION='Job42'
+export PARALLEL_SERVER_MATLAB_EXE='/cluster/sw/matlab/R2021b/bin/matlab/bin/worker'
+export PARALLEL_SERVER_MATLAB_ARGS='-parallel'
+export PARALLEL_SERVER_DEBUG='true'
+export MLM_WEB_LICENSE='false'
+export PARALLEL_SERVER_STORAGE_LOCATION='/cluster/cjweijer_grp/jklebes001//jklebes001/R2022a'
+export PARALLEL_SERVER_CMR='/cluster/sw/matlab/R2021b/bin/matlab'
+export PARALLEL_SERVER_TOTAL_TASKS='4'
+export PARALLEL_SERVER_NUM_THREADS='1'
+qsub -S /bin/sh -N Job42  -j yes -o '/cluster/cjweijer_grp/jklebes001//jklebes001/R2022a/Job42/Job42.log' -v PARALLEL_SERVER_DECODE_FUNCTION,PARALLEL_SERVER_STORAGE_CONSTRUCTOR,PARALLEL_SERVER_JOB_LOCATION,PARALLEL_SERVER_MATLAB_EXE,PARALLEL_SERVER_MATLAB_ARGS,PARALLEL_SERVER_DEBUG,MLM_WEB_LICENSE,PARALLEL_SERVER_STORAGE_LOCATION,PARALLEL_SERVER_CMR,PARALLEL_SERVER_TOTAL_TASKS,PARALLEL_SERVER_NUM_THREADS -pe matlab 4 '/cluster/cjweijer_grp/jklebes001//jklebes001/R2022a/Job42/communicatingJobWrapper.sh'

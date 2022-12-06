@@ -1,0 +1,379 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>bandpass</title><meta name="generator" content="MATLAB 9.12"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2022-11-04"><meta name="DC.source" content="bandpass.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; }
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+span.typesection { color:#A0522D }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><pre class="codeinput"><span class="keyword">function</span> image_out = bandpass(image, low_cutoff, high_cutoff, varargin)
+<span class="comment">% 2D image bandpass filter with options,</span>
+<span class="comment">% defaults replicating imageJ's FFT bandpass: butterworth, mirror padding</span>
+<span class="comment">% author jklebes 2022</span>
+
+<span class="comment">%%%%% parse inputs</span>
+p = inputParser;
+<span class="comment">%image</span>
+addRequired(p,<span class="string">'image'</span>,@isnumeric); <span class="comment">%would like to validate array is 2D</span>
+<span class="comment">%low_cutoff: less than image size, 0-&gt;None</span>
+addRequired(p,<span class="string">'low_cutoff'</span>, @isnumeric)
+<span class="keyword">if</span> low_cutoff==0
+    low_cutoff=[];
+<span class="keyword">end</span>
+<span class="comment">%high_cutoff: more than low cutoff, less than image size</span>
+addRequired(p,<span class="string">'high_cutoff'</span>, @isnumeric)
+<span class="comment">%stripe supression: Horizontal, Vertical, or None (default)</span>
+addParameter(p,<span class="string">'stripeOption'</span>, <span class="string">'None'</span>, @(x) any(validatestring(x,{<span class="string">'Horizontal'</span>, <span class="string">'Vertical'</span>, <span class="string">'None'</span>})))
+<span class="comment">%stripe supression width: less than image dimension, 0-&gt;None</span>
+addParameter(p,<span class="string">'stripeWidth'</span>, 0, @isnumeric)
+<span class="comment">%filter type, default Butterworth</span>
+addParameter(p,<span class="string">'filter'</span>, <span class="string">'butterworth'</span>, @(x) any(validatestring(x,{<span class="string">'butterworth'</span>, <span class="string">'hard'</span>})))
+addParameter(p,<span class="string">'butterworthN'</span>, 2)
+<span class="comment">%FT padding type, default 'symmetric'</span>
+padOptions=[<span class="string">'symmetric'</span>, <span class="string">'mirror'</span>,<span class="string">'None'</span>];
+addParameter(p,<span class="string">'padOption'</span>, <span class="string">'symmetric'</span>, @(x) isnumeric(x)||any(validatestring(x,padOptions)));
+
+<span class="comment">%run the parser</span>
+parse(p,image, low_cutoff, high_cutoff,varargin{:})
+<span class="comment">%additional argument consequences</span>
+<span class="keyword">if</span> p.Results.stripeWidth&lt;=0
+    stripeOption=<span class="string">'None'</span>;
+<span class="keyword">else</span>
+    stripeOption=p.Results.stripeOption;
+<span class="keyword">end</span>
+
+<span class="comment">%save image size</span>
+image_size=size(image);
+<span class="comment">%pad and Fourier transform</span>
+fourier = fft_padded(image, p.Results.padOption);
+fourier_shifted = fftshift(fourier);
+<span class="keyword">if</span> p.Results.filter==<span class="string">'butterworth'</span>
+    <span class="comment">%construct Fourier space butterworth bandpass filter</span>
+    <span class="comment">%same (usually square) size as image</span>
+    masksize_x = size(fourier_shifted,1);
+    masksize_y = size(fourier_shifted,2);
+    center_coord_x = floor(masksize_x/2)+1;
+    center_coord_y = floor(masksize_y/2)+1;
+    n=p.Results.butterworthN;
+    mask=butterworthMask(masksize_x, masksize_y, low_cutoff, high_cutoff,n);
+<span class="keyword">elseif</span> p.Results.filter==<span class="string">'hard'</span>
+    <span class="comment">%construct hard cutoff Fourier space mask</span>
+    mask = zeros(size(fourier_shifted));
+    masksize_x = size(mask,1);
+    masksize_y = size(mask,2);
+    center_coord_x = floor(masksize_x/2)+1;
+    center_coord_y = floor(masksize_y/2)+1;
+    <span class="keyword">for</span> col = 1: masksize_y
+        <span class="keyword">for</span> row = 1:masksize_y
+            distance = sqrt((col-center_coord_y)^2+(row-center_coord_x)^2);
+            <span class="keyword">if</span> distance &lt;= high_cutoff &amp;&amp; distance &gt; low_cutoff
+                mask(row, col)=1;
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+<span class="comment">%potentially add stripe to Fourier space mask</span>
+<span class="keyword">switch</span> stripeOption
+    <span class="keyword">case</span> <span class="string">'Horizontal'</span>
+        <span class="comment">%Fourier space stripe goes other way than in real space!</span>
+        width=p.Results.stripeWidth;
+        <span class="keyword">for</span> col = floor(center_coord_x-width/2):ceil(center_coord_x+width/2)
+            mask(:,col)=0;
+        <span class="keyword">end</span>
+    <span class="keyword">case</span> <span class="string">'Vertical'</span>
+        width=p.Results.stripeWidth;
+        <span class="keyword">for</span> row = floor(center_coord_y-width/2):ceil(center_coord_y+width/2)
+            mask(row,:)=0;
+        <span class="keyword">end</span>
+<span class="keyword">end</span>
+<span class="comment">%apply mask</span>
+fourier_masked = fourier_shifted .* mask;
+<span class="comment">%center</span>
+fourier_masked_shift = fftshift(fourier_masked);
+<span class="comment">%transform back and cut away padding</span>
+padded_image_out = real(ifft2(fourier_masked_shift));
+left_border = ceil((masksize_x-image_size(1))/2);
+top_border = ceil((masksize_y-image_size(2))/2);
+image_out= padded_image_out(left_border+1:left_border+image_size(1), <span class="keyword">...</span>
+    top_border+1:top_border+image_size(2));
+<span class="keyword">end</span>
+
+<span class="keyword">function</span> mask= butterworthMask(masksize_x, masksize_y, low_cutoff, high_cutoff,n)
+    <span class="comment">%array of coordinate values from center</span>
+    xs= -(masksize_x/2):masksize_x/2-1;
+    xs = repmat(xs, [masksize_y 1]);
+    ys= -(masksize_y/2):masksize_y/2-1;
+    ys = repmat(ys', [1 masksize_x]);
+    <span class="comment">%array of distances</span>
+    dist=sqrt(xs.^2+ys.^2);
+    n2=n*2;
+    <span class="comment">%trivially scaled arrays dist/low_cutoff, dist/high_cutoff</span>
+    <span class="comment">%butterworth equations on low, high side</span>
+    <span class="keyword">if</span> ~isempty(high_cutoff)
+        high_filter=(1./(1 + (dist/high_cutoff).^(n2)));
+    <span class="keyword">else</span>
+        high_filter= ones(masksize_x, masksize_y);
+    <span class="keyword">end</span>
+    <span class="keyword">if</span> low_cutoff &gt;0
+        low_filter=1./(1 + (dist/low_cutoff).^(n2));
+    <span class="keyword">else</span>
+        low_filter = zeros(masksize_x, masksize_y);
+    <span class="keyword">end</span>
+    <span class="comment">%combine</span>
+    mask = high_filter.*(1-low_filter);
+<span class="keyword">end</span>
+
+<span class="keyword">function</span> image_out = fft_padded(image, varargin)
+<span class="comment">%image_out adds padding and carries out fft</span>
+<span class="comment">% the possibly rectangular image is extended to a square of size N*N,</span>
+<span class="comment">% where N=2^i is &gt;= 1.5 the larger dimension (except in case "none")</span>
+<span class="comment">% "symetric" is mirror padding, can be used to replicate imageJ FFt bandpass filter</span>
+<span class="comment">% https://imagej.nih.gov/ij/plugins/fft-filter.html</span>
+<span class="keyword">if</span> nargin &gt;1
+    padding_opt = varargin{1};
+    <span class="keyword">if</span> ~isnumeric(padding_opt) &amp;&amp; padding_opt==<span class="string">"mirror"</span>
+        padding_opt = <span class="string">"symmetric"</span>;
+    <span class="keyword">end</span>
+    <span class="keyword">if</span> ~isnumeric(padding_opt) &amp;&amp; padding_opt==<span class="string">"zeros"</span>
+        padding_opt=0;
+    <span class="keyword">end</span>
+    <span class="keyword">if</span> isnumeric(padding_opt) | ismember(padding_opt,[<span class="string">"circular"</span>,<span class="string">"replicate"</span>,<span class="string">"symmetric"</span>])
+        dims = size(image);
+        maxdim = max(dims);
+        i = ceil(log2(maxdim*1.5)); <span class="comment">%TODO check</span>
+        N=2^i;
+        x_pad=N-dims(1);
+        y_pad=N-dims(2);
+        image=padarray(image,[ceil(x_pad/2), ceil(y_pad/2)], padding_opt);
+        <span class="keyword">if</span> mod(x_pad,2)==1
+            image=image(1:end-1,:);
+        <span class="keyword">end</span>
+        <span class="keyword">if</span> mod(y_pad,2)==1
+            image=image(:,1:end-1);
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+<span class="comment">%else if argument is nonexistent, empty, or invalid option:</span>
+<span class="comment">%image stays unpadded</span>
+image_out = fft2(image);
+<span class="keyword">end</span>
+</pre><pre class="codeoutput error">Not enough input arguments.
+
+Error in bandpass (line 12)
+if low_cutoff==0
+</pre><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2022a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+function image_out = bandpass(image, low_cutoff, high_cutoff, varargin)
+% 2D image bandpass filter with options, 
+% defaults replicating imageJ's FFT bandpass: butterworth, mirror padding
+% author jklebes 2022
+
+%%%%% parse inputs
+p = inputParser;
+%image
+addRequired(p,'image',@isnumeric); %would like to validate array is 2D
+%low_cutoff: less than image size, 0->None
+addRequired(p,'low_cutoff', @isnumeric)
+if low_cutoff==0
+    low_cutoff=[];
+end
+%high_cutoff: more than low cutoff, less than image size
+addRequired(p,'high_cutoff', @isnumeric)
+%stripe supression: Horizontal, Vertical, or None (default)
+addParameter(p,'stripeOption', 'None', @(x) any(validatestring(x,{'Horizontal', 'Vertical', 'None'})))
+%stripe supression width: less than image dimension, 0->None
+addParameter(p,'stripeWidth', 0, @isnumeric)
+%filter type, default Butterworth
+addParameter(p,'filter', 'butterworth', @(x) any(validatestring(x,{'butterworth', 'hard'})))
+addParameter(p,'butterworthN', 2)
+%FT padding type, default 'symmetric'
+padOptions=['symmetric', 'mirror','None'];
+addParameter(p,'padOption', 'symmetric', @(x) isnumeric(x)||any(validatestring(x,padOptions)));
+
+%run the parser
+parse(p,image, low_cutoff, high_cutoff,varargin{:})
+%additional argument consequences
+if p.Results.stripeWidth<=0
+    stripeOption='None';
+else 
+    stripeOption=p.Results.stripeOption;
+end
+
+%save image size
+image_size=size(image);
+%pad and Fourier transform
+fourier = fft_padded(image, p.Results.padOption);
+fourier_shifted = fftshift(fourier);
+if p.Results.filter=='butterworth'
+    %construct Fourier space butterworth bandpass filter
+    %same (usually square) size as image
+    masksize_x = size(fourier_shifted,1); 
+    masksize_y = size(fourier_shifted,2);
+    center_coord_x = floor(masksize_x/2)+1;
+    center_coord_y = floor(masksize_y/2)+1;
+    n=p.Results.butterworthN;
+    mask=butterworthMask(masksize_x, masksize_y, low_cutoff, high_cutoff,n);
+elseif p.Results.filter=='hard'
+    %construct hard cutoff Fourier space mask
+    mask = zeros(size(fourier_shifted));
+    masksize_x = size(mask,1);
+    masksize_y = size(mask,2);
+    center_coord_x = floor(masksize_x/2)+1;
+    center_coord_y = floor(masksize_y/2)+1;
+    for col = 1: masksize_y
+        for row = 1:masksize_y
+            distance = sqrt((col-center_coord_y)^2+(row-center_coord_x)^2);
+            if distance <= high_cutoff && distance > low_cutoff
+                mask(row, col)=1;
+            end
+        end
+    end
+end
+%potentially add stripe to Fourier space mask
+switch stripeOption
+    case 'Horizontal'
+        %Fourier space stripe goes other way than in real space!
+        width=p.Results.stripeWidth;
+        for col = floor(center_coord_x-width/2):ceil(center_coord_x+width/2)
+            mask(:,col)=0;
+        end
+    case 'Vertical'
+        width=p.Results.stripeWidth;
+        for row = floor(center_coord_y-width/2):ceil(center_coord_y+width/2)
+            mask(row,:)=0;
+        end
+end
+%apply mask
+fourier_masked = fourier_shifted .* mask;
+%center
+fourier_masked_shift = fftshift(fourier_masked);
+%transform back and cut away padding
+padded_image_out = real(ifft2(fourier_masked_shift));
+left_border = ceil((masksize_x-image_size(1))/2);
+top_border = ceil((masksize_y-image_size(2))/2);
+image_out= padded_image_out(left_border+1:left_border+image_size(1), ...
+    top_border+1:top_border+image_size(2));
+end
+
+function mask= butterworthMask(masksize_x, masksize_y, low_cutoff, high_cutoff,n)
+    %array of coordinate values from center
+    xs= -(masksize_x/2):masksize_x/2-1;
+    xs = repmat(xs, [masksize_y 1]);
+    ys= -(masksize_y/2):masksize_y/2-1;
+    ys = repmat(ys', [1 masksize_x]);
+    %array of distances
+    dist=sqrt(xs.^2+ys.^2);
+    n2=n*2;
+    %trivially scaled arrays dist/low_cutoff, dist/high_cutoff
+    %butterworth equations on low, high side
+    if ~isempty(high_cutoff)
+        high_filter=(1./(1 + (dist/high_cutoff).^(n2)));
+    else 
+        high_filter= ones(masksize_x, masksize_y);
+    end
+    if low_cutoff >0
+        low_filter=1./(1 + (dist/low_cutoff).^(n2));
+    else
+        low_filter = zeros(masksize_x, masksize_y);
+    end
+    %combine
+    mask = high_filter.*(1-low_filter);
+end
+
+function image_out = fft_padded(image, varargin)
+%image_out adds padding and carries out fft
+% the possibly rectangular image is extended to a square of size N*N,
+% where N=2^i is >= 1.5 the larger dimension (except in case "none")
+% "symetric" is mirror padding, can be used to replicate imageJ FFt bandpass filter
+% https://imagej.nih.gov/ij/plugins/fft-filter.html
+if nargin >1
+    padding_opt = varargin{1};
+    if ~isnumeric(padding_opt) && padding_opt=="mirror"
+        padding_opt = "symmetric";
+    end
+    if ~isnumeric(padding_opt) && padding_opt=="zeros"
+        padding_opt=0;
+    end
+    if isnumeric(padding_opt) | ismember(padding_opt,["circular","replicate","symmetric"])
+        dims = size(image);
+        maxdim = max(dims);
+        i = ceil(log2(maxdim*1.5)); %TODO check
+        N=2^i;
+        x_pad=N-dims(1);
+        y_pad=N-dims(2);
+        image=padarray(image,[ceil(x_pad/2), ceil(y_pad/2)], padding_opt);
+        if mod(x_pad,2)==1
+            image=image(1:end-1,:);
+        end
+        if mod(y_pad,2)==1
+            image=image(:,1:end-1);
+        end
+    end
+end
+%else if argument is nonexistent, empty, or invalid option:
+%image stays unpadded
+image_out = fft2(image);
+end
+##### SOURCE END #####
+--></body></html>

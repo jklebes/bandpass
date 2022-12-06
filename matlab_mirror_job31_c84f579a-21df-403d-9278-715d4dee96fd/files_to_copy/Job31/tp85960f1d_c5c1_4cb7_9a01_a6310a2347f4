@@ -1,0 +1,10 @@
+#!/bin/sh
+export PARALLEL_SERVER_DECODE_FUNCTION='parallel.cluster.generic.independentDecodeFcn'
+export PARALLEL_SERVER_STORAGE_CONSTRUCTOR='makeFileStorageObject'
+export PARALLEL_SERVER_JOB_LOCATION='Job31'
+export PARALLEL_SERVER_MATLAB_EXE='/cluster/sw/matlab/R2021b/bin/matlab/bin/worker'
+export PARALLEL_SERVER_DEBUG='true'
+export MLM_WEB_LICENSE='false'
+export PARALLEL_SERVER_STORAGE_LOCATION='/cluster/cjweijer_group/jklebes001//jklebes001/R2022a'
+export PARALLEL_SERVER_TASK_LOCATION='Job31/Task1'
+qsub -S /bin/sh -N Job31.1  -j yes -o '/cluster/cjweijer_group/jklebes001//jklebes001/R2022a/Job31/Task1.log' -v PARALLEL_SERVER_DECODE_FUNCTION,PARALLEL_SERVER_STORAGE_CONSTRUCTOR,PARALLEL_SERVER_JOB_LOCATION,PARALLEL_SERVER_MATLAB_EXE,PARALLEL_SERVER_DEBUG,MLM_WEB_LICENSE,PARALLEL_SERVER_STORAGE_LOCATION,PARALLEL_SERVER_TASK_LOCATION  '/cluster/cjweijer_group/jklebes001//jklebes001/R2022a/Job31/independentJobWrapper.sh'
