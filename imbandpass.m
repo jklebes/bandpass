@@ -212,5 +212,5 @@ if nargin >1
 end
 %else if argument is nonexistent, empty, or invalid option:
 %image stays unpadded
-image_out = uint8(fft2(image));
+image_out = uint8(round(fft2(image)));
 end
