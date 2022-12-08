@@ -147,9 +147,9 @@ function mask = gaussianMask(masksize_x, masksize_y, low_cutoff_ratio, high_cuto
 xs= -(masksize_x/2):masksize_x/2-1;
 xs = repmat(xs, [masksize_y 1]);
 ys= -(masksize_y/2):masksize_y/2-1;
-ys = repmat(ys', [1 masksize_x]);
+ys = repmat(ys', [1 masksize_x]); %TODO try ndgrid
 %array of distances
-dist=sqrt(xs.^2+ys.^2);
+dist=sqrt(xs.^2+ys.^2); 
 %exponentials
 mask_low = exp(-low_cutoff_ratio^2*dist.^2);
 mask_high = exp(-high_cutoff_ratio^2*dist.^2);
