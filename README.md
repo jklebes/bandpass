@@ -26,7 +26,7 @@ equivlently
 
 ``stripeFilter = 'Gaussian' `` or ``'hard'`` - stripe filter mode, default ``'gaussian'``
 
-``stripeWidth`` - stripe width to suppress, default ``3``.  If ``0``, no stripe supression will take place, even if ``stripeOption = 'Horizontal' `` or ``'Vertical'`` was chosen.
+``stripeTolerance`` - tolerance (in percent) for stripe deviation from horizontal/vertical alignement, default ``5``.  
 
 ``filter='gaussian', 'butterworth'`` or ``'hard'``, filter profile, default ``'gaussian'``
 

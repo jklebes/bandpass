@@ -20,7 +20,7 @@ addParameter(p,'stripes', 'None', @(x) any(validatestring(x,{'Horizontal', 'Vert
 %stripe Filter option
 addParameter(p,'stripeFilter', 'gaussian', @(x) any(validatestring(x,{'gaussian', 'hard'})));
 %stripe supression width: less than image dimension, 0->None
-addParameter(p,'stripeWidth', 3, @(x) isnumeric(x))
+addParameter(p,'stripeTolerance', 5, @(x) isnumeric(x))
 %filter type, default gaussian
 addParameter(p,'filter', 'gaussian', @(x) any(validatestring(x,{'gaussian','butterworth', 'hard'})))
 addParameter(p,'butterworthN', 1)
@@ -44,11 +44,6 @@ if isempty(high_cutoff)
     %it to function properly
     high_cutoff=maxdim*100;
     %and e^(-infty)=0 hopefuly
-end
-if p.Results.stripeWidth<=0
-    stripes='None';
-else
-    stripes=p.Results.stripes;
 end
 
 %save image size
@@ -89,41 +84,41 @@ end
 switch p.Results.stripeFilter
     case "hard"
         %add a stripe of 0s to the mask
-        switch stripes
+        switch p.Results.stripes
             case 'Horizontal'
                 %Fourier space stripe goes other way than in real space!
-                width=p.Results.stripeWidth;
-                for col = floor(center_coord_x-width/2):ceil(center_coord_x+width/2)
+                for col = floor(center_coord_x-width/2):ceil(center_coord_x+p.Results.stripeTolerance/2)
                     mask(:,col)=0;
                 end
             case 'Vertical'
-                width=p.Results.stripeWidth;
-                for row = floor(center_coord_y-width/2):ceil(center_coord_y+width/2)
+                for row = floor(center_coord_y-width/2):ceil(center_coord_y+p.Results.stripeToleranceh/2)
                     mask(row,:)=0;
                 end
         end
     case "gaussian"
         %add a gaussian stripe filter to the mask
-        switch stripes
+        %the stripe Filter has this Fourier space width
+        stripeWidth=(100-p.Results.stripeTolerance)/100;
+        switch p.Results.stripes
             case 'Horizontal'
                 %Fourier space stripe goes other way than in real space!
                 xs= -(masksize_x/2):masksize_x/2-1;
                 xs = repmat(xs, [masksize_y 1]);
-                stripe_cutoff_ratio = p.Results.stripeWidth/(2*image_size(1));
+                stripe_cutoff_ratio = stripeWidth/(2*image_size(1));
                 stripeMask=exp(-stripe_cutoff_ratio^2*xs.^2);
                 mask=mask.*stripeMask;
             case 'Vertical'
                 ys= -(masksize_y/2):masksize_y/2-1;
                 ys = repmat(ys', [1 masksize_x]);
-                stripe_cutoff_ratio = p.Results.stripeWidth/(2*image_size(2));
+                stripe_cutoff_ratio = stripeWidth/(2*image_size(2));
                 stripeMask=exp(-stripe_cutoff_ratio^2*ys.^2);
                 mask=mask.*stripeMask;
-                %otherwise no stripe filtering action
+            %otherwise no stripe filtering action
         end
 
 end
 %apply mask
-fourier_masked = fourier_shifted .* mask;
+fourier_masked = fourier_shifted.* mask;
 
 %center
 fourier_masked = fftshift(fourier_masked);
@@ -212,5 +207,5 @@ if nargin >1
 end
 %else if argument is nonexistent, empty, or invalid option:
 %image stays unpadded
-image_out = uint8(round(fft2(image)));
+image_out = fft2(image);
 end
