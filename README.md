@@ -14,7 +14,8 @@ equivlently
 ### Arguments
 #### Positional
 
-``image`` 2D numerical array
+``image`` Image in.  Handles single-channel or RGB images as arrays: input (m,n) or (m,n,3) array of values in range 0 to 255; 
+                 a uint8 array of the same dimensions with values 0 to 255 will be returned.
 
 ``low_cutoff`` - filter out features below this (real space) lengthscale
 

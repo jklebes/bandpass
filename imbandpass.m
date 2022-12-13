@@ -6,10 +6,11 @@ function image_out = imbandpass(image, low_cutoff, high_cutoff, varargin)
 %%%%% parse inputs
 p = inputParser;
 %image
-addRequired(p,'image',@(x) isnumeric(x)&&ismatrix(x) );
+addRequired(p,'image',@(x) isnumeric(x)&&(ismatrix(x)||size(x,3)==3));
 %parse image first to validate further inputs againsts its dimensions
 parse(p,image);
 dims=size(image);
+dims=dims(1:2);
 maxdim = max(dims);
 %low_cutoff: less than image size, 0->None
 addRequired(p,'low_cutoff', @(x) isempty(x)||(isnumeric(x)&&0<=x&&x<=maxdim));
@@ -40,21 +41,22 @@ if isempty(low_cutoff)
 end
 if isempty(high_cutoff)
     %would like to set to Inf, but a very small central disk
-    %of the Fourier space mask needs to be removed for 
+    %of the Fourier space mask needs to be removed for
     %it to function properly
     high_cutoff=maxdim*100;
     %and e^(-infty)=0 hopefuly
 end
+if size(image,3)==3
+    channels=3;
+else
+    channels=1;
+end
 
-%save image size
-image_size=size(image);
-%pad and Fourier transform
-fourier = fft_padded(image, p.Results.padOption);
-fourier_shifted = fftshift(fourier);
 %size of mask to construct
 %same (usually square) size as image
-masksize_x = size(fourier_shifted,1);
-masksize_y = size(fourier_shifted,2);
+fourier = fft_padded(image(:,:,1), p.Results.padOption);
+masksize_x = size(fourier,1);
+masksize_y = size(fourier,2);
 center_coord_x = floor(masksize_x/2)+1;
 center_coord_y = floor(masksize_y/2)+1;
 switch p.Results.filter
@@ -104,33 +106,47 @@ switch p.Results.stripeFilter
                 %Fourier space stripe goes other way than in real space!
                 xs= -(masksize_x/2):masksize_x/2-1;
                 xs = repmat(xs, [masksize_y 1]);
-                stripe_cutoff_ratio = stripeWidth/(2*image_size(1));
+                stripe_cutoff_ratio = stripeWidth/(2*dims(1));
                 stripeMask=exp(-stripe_cutoff_ratio^2*xs.^2);
                 mask=mask.*stripeMask;
             case 'Vertical'
                 ys= -(masksize_y/2):masksize_y/2-1;
                 ys = repmat(ys', [1 masksize_x]);
-                stripe_cutoff_ratio = stripeWidth/(2*image_size(2));
+                stripe_cutoff_ratio = stripeWidth/(2*dims(2));
                 stripeMask=exp(-stripe_cutoff_ratio^2*ys.^2);
                 mask=mask.*stripeMask;
-            %otherwise no stripe filtering action
+                %otherwise no stripe filtering action
         end
 
 end
-%apply mask
-fourier_masked = fourier_shifted.* mask;
+%loop over possibly three channels
+image_out=zeros(dims(1), dims(2), channels);
+for i=1:channels
 
-%center
-fourier_masked = fftshift(fourier_masked);
-%transform back and cut away padding
-padded_image_out = real(ifft2(fourier_masked));
-left_border = ceil((masksize_x-image_size(1))/2);
-top_border = ceil((masksize_y-image_size(2))/2);
-image_out= padded_image_out(left_border+1:left_border+image_size(1), ...
-    top_border+1:top_border+image_size(2));
-% results may have range shifted into the negatives, shift back into
-% 0 to 255 range
-image_out = image_out-min(image_out, [], 'all');
+    %pad and Fourier transform
+    fourier = fft_padded(image(:,:,i), p.Results.padOption);
+    fourier_shifted = fftshift(fourier);
+    %apply mask
+    fourier_masked = fourier_shifted.* mask;
+
+    %center
+    fourier_masked = fftshift(fourier_masked);
+    %transform back and cut away padding
+    padded_image_out = real(ifft2(fourier_masked));
+    left_border = ceil((masksize_x-dims(1))/2);
+    top_border = ceil((masksize_y-dims(2))/2);
+    image_out_ch= padded_image_out(left_border+1:left_border+dims(1), ...
+        top_border+1:top_border+dims(2));
+    % results may have range shifted into the negatives, shift back into
+    % 0 to 255 range
+    image_out(:,:,i) = image_out_ch-min(image_out_ch, [], 'all');
+end
+%in case there was just one channel, supress the dimension
+image_out=squeeze(image_out);
+%make sure return type is an image, 1 or 3 channel
+%should be doubles in range 0 to 255 at this point
+%enforce and convert to uint8
+image_out=max(0,min(255,cast(image_out,'uint8')));
 end
 
 function mask = gaussianMask(masksize_x, masksize_y, low_cutoff_ratio, high_cutoff_ratio)
@@ -144,7 +160,7 @@ xs = repmat(xs, [masksize_y 1]);
 ys= -(masksize_y/2):masksize_y/2-1;
 ys = repmat(ys', [1 masksize_x]); %TODO try ndgrid
 %array of distances
-dist=sqrt(xs.^2+ys.^2); 
+dist=sqrt(xs.^2+ys.^2);
 %exponentials
 mask_low = exp(-low_cutoff_ratio^2*dist.^2);
 mask_high = exp(-high_cutoff_ratio^2*dist.^2);
@@ -209,3 +225,4 @@ end
 %image stays unpadded
 image_out = fft2(image);
 end
+
