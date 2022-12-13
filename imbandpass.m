@@ -21,7 +21,7 @@ addParameter(p,'stripes', 'None', @(x) any(validatestring(x,{'Horizontal', 'Vert
 %stripe Filter option
 addParameter(p,'stripeFilter', 'gaussian', @(x) any(validatestring(x,{'gaussian', 'hard'})));
 %stripe supression width: less than image dimension, 0->None
-addParameter(p,'stripeTolerance', 5, @(x) isnumeric(x))
+addParameter(p,'stripeTolerance', 5, @(x) isnumeric(x)&&x>=0&&x<=100)
 %filter type, default gaussian
 addParameter(p,'filter', 'gaussian', @(x) any(validatestring(x,{'gaussian','butterworth', 'hard'})))
 addParameter(p,'butterworthN', 1)
