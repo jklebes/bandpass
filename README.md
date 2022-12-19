@@ -19,7 +19,9 @@ equivlently
 
 ``low_cutoff`` - filter out features below this (real space) lengthscale in pixels.
 
-``high_cutoff`` - filter out features above this lengthscale.  It's possible to set upper and/or lower cutoff to ``[]`` and not apply this aspect of the filter.
+``high_cutoff`` - filter out features above this lengthscale.  
+
+It's possible to set upper and/or lower cutoff to ``[]`` and not apply this aspect of the filter.
 
 #### Optional keyword parameters
 
