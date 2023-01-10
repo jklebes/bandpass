@@ -1,4 +1,4 @@
-# bandpass
+# imbandpass
 Bandpass filter for images (2D arrays) supressing high-frequency noise, low-frequency variations, and stripes.  Gaussian, Butterworth, or hard filter options.
 [![View bandpass on File Exchange](https://www.mathworks.com/matlabcentral/images/matlab-file-exchange.svg)](https://uk.mathworks.com/matlabcentral/fileexchange/120028-bandpass)
 
