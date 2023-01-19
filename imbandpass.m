@@ -121,6 +121,8 @@ switch p.Results.stripeFilter
         end
 
 end
+%restore central pixel
+mask(masksize_x/2+1,masksize_y/2+1)=1;
 %loop over possibly three channels
 image_out=zeros(dims(1), dims(2), channels);
 for i=1:channels
@@ -141,7 +143,7 @@ for i=1:channels
         top_border+1:top_border+dims(2));
     % results may have range shifted into the negatives, shift back into
     % 0 to 255 range
-    image_out(:,:,i) = image_out_ch-min(image_out_ch, [], 'all');
+    image_out(:,:,i) = image_out_ch;
 end
 %in case there was just one channel, supress the dimension
 image_out=squeeze(image_out);
