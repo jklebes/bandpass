@@ -85,22 +85,24 @@ end
 %potentially add stripe to Fourier space mask
 switch p.Results.stripeFilter
     case "hard"
+        %the stripe Filter has this Fourier space width
+        stripeWidth=(100-p.Results.stripeTolerance)/100;
         %add a stripe of 0s to the mask
         switch p.Results.stripes
             case 'Horizontal'
                 %Fourier space stripe goes other way than in real space!
-                for col = floor(center_coord_x-width/2):ceil(center_coord_x+p.Results.stripeTolerance/2)
+                for col = floor(center_coord_x-stripeWidth/2):ceil(center_coord_x+p.Results.stripeTolerance/2)
                     mask(:,col)=0;
                 end
             case 'Vertical'
-                for row = floor(center_coord_y-width/2):ceil(center_coord_y+p.Results.stripeToleranceh/2)
+                for row = floor(center_coord_y-stripeWidth/2):ceil(center_coord_y+p.Results.stripeTolerance/2)
                     mask(row,:)=0;
                 end
         end
     case "gaussian"
-        %add a gaussian stripe filter to the mask
         %the stripe Filter has this Fourier space width
         stripeWidth=(100-p.Results.stripeTolerance)/100;
+        %add a gaussian stripe filter to the mask
         switch p.Results.stripes
             case 'Horizontal'
                 %Fourier space stripe goes other way than in real space!
