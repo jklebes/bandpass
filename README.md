@@ -10,7 +10,7 @@ To access non-default options including stripe supression, use keyword arguments
 
 ``imbandpass(I, 3, 250, filter="Butterworth", stripes="Horizontal", stripeTolerance=5)``
 
-equivlently
+equivalently
 
 ``imbandpass(I, 3, 250, "filter", "Butterworth", "stripes", "Horizontal", "stripeTolerance", 5)``.
 
