@@ -17,8 +17,7 @@ equivalently
 ### Arguments
 #### Positional
 
-``image`` Image in.  Handles single-channel or RGB images as arrays: input (m,n) or (m,n,3) array of values in range 0 to 255; 
-                 a uint8 array of the same dimensions with values 0 to 255 will be returned.
+``image`` Image in.  Handles single-channel or RGB images as arrays: input (m,n) or (m,n,3) array of values in range 0 to 255.
 
 ``low_cutoff`` - filter out features below this (real space) lengthscale in pixels.
 
@@ -39,3 +38,7 @@ It's possible to set upper and/or lower cutoff to ``[]`` and not apply this aspe
 ``butterworthN`` exponent in butterworth filter, default ``1``
 
 ``padOption = 'symmetric' ``, ``'replicate'``, ``0`` or other value, or ``'None'`` - how to pad image border for Fourier transform, default ``'symmetric'``
+
+#### Output
+
+``image_out`` - a uint8 array with the same dimensions and number of channels as ``image``.
