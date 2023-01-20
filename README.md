@@ -39,6 +39,6 @@ It's possible to set upper and/or lower cutoff to ``[]`` and not apply this aspe
 
 ``padOption = 'symmetric' ``, ``'replicate'``, ``0`` or other value, or ``'None'`` - how to pad image border for Fourier transform, default ``'symmetric'``
 
-#### Output
+### Output
 
 ``image_out`` - a uint8 array with the same dimensions and number of channels as ``image``.
