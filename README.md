@@ -8,11 +8,11 @@ The default options of Gaussian filter, Gaussian stripe filter, and mirrored pad
 
 To access non-default options including stripe supression, use keyword arguments, for example
 
-``imbandpass(I, 3, 250, filter="Butterworth", stripes="Horizontal", stripeTolerance=5)``
+``imbandpass(I, 3, 250, filter="Butterworth", stripes="Horizontal", stripeTolerance=10)``
 
 equivalently
 
-``imbandpass(I, 3, 250, "filter", "Butterworth", "stripes", "Horizontal", "stripeTolerance", 5)``.
+``imbandpass(I, 3, 250, "filter", "Butterworth", "stripes", "Horizontal", "stripeTolerance", 10)``.
 
 ### Arguments
 #### Positional
