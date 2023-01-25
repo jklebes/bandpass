@@ -42,3 +42,7 @@ It's possible to set upper and/or lower cutoff to ``[]`` and not apply this aspe
 ### Output
 
 ``image_out`` - a uint8 array with the same dimensions and number of channels as ``image``.
+
+---
+
+If this is useful to you or you want it fixed, please let me know with a rating/comment that it worked/how it didn't work!
