@@ -159,8 +159,9 @@ function mask = gaussianMask(masksize_x, masksize_y, low_cutoff_ratio, high_cuto
 %but we want to match the centering of fftshift
 %on (N/2, N/2)
 %arrays of x, y coordinates
-range=-(masksize_y/2):masksize_y/2-1;
-[xs,ys] = ndgrid(range,range);
+range_x=-(masksize_x/2):masksize_x/2-1;
+range_y=-(masksize_y/2):masksize_y/2-1;
+[xs,ys] = ndgrid(range_x,range_y);
 %array of distances
 dist=sqrt(xs.^2+ys.^2);
 %exponentials
@@ -171,10 +172,9 @@ end
 
 function mask= butterworthMask(masksize_x, masksize_y, low_cutoff, high_cutoff,n)
 %array of coordinate values from center
-xs= -(masksize_x/2):masksize_x/2-1;
-xs = repmat(xs, [masksize_y 1]);
-ys= -(masksize_y/2):masksize_y/2-1;
-ys = repmat(ys', [1 masksize_x]);
+range_x=-(masksize_x/2):masksize_x/2-1;
+range_y=-(masksize_y/2):masksize_y/2-1;
+[xs,ys] = ndgrid(range_x,range_y);
 %array of distances
 dist=sqrt(xs.^2+ys.^2);
 n2=n*2; %exponent
